@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.net.URLDecoder;
+import java.io.UnsupportedEncodingException;
 
 class JDownloader {
 
@@ -17,10 +20,9 @@ class JDownloader {
             "Syntax: JDownloader [options] <url_string>\n\n"+
             "Options\n"+
             "-------\n"+
-            "    -c : continue download\n"+
-            "    -h : show help\n"
+            "    -c : continue download from where you left\n"+
+            "    -h : show this help message\n"
             );    
-
     }
 
     public static void main(String [] args){
@@ -40,7 +42,7 @@ class JDownloader {
                     help();
                 }
                 else{
-                    System.err.println("wrong option\n");
+                    System.err.println("wrong option");
                     System.exit(5);
                 }
             }else{
@@ -68,21 +70,25 @@ class Downloader {
 
     public Downloader(String urlData){
         urlStr = urlData;
-
+       
         try {
             // usring the url to create a http connection
             urlObj = new URL(urlStr);
             conn = (HttpURLConnection) urlObj.openConnection();
+            urlStr = URLDecoder.decode(urlStr,"UTF-8");
+        } catch(UnsupportedEncodingException e){
+            System.err.println("error in url");
+            System.exit(2);
         } catch (MalformedURLException e){
-            System.err.println("wrong url\n");
+            System.err.println("wrong url");
             System.exit(2);
         } catch (Exception e){
-            System.err.println("connection error\n");
+            System.err.println("connection error");
             System.exit(3);
         }
     }
 
-    private static String getSize(long num){
+    private String getSize(long num){
         double doubleVal=(double)num;
         Formatter fmt=new Formatter();
         String ans="";
@@ -176,6 +182,11 @@ class Downloader {
         return (int)(fraction*100);
     }
 
+    private String getFileName(String urlStr){
+        String name = urlStr.substring( urlStr.lastIndexOf('/')+1, urlStr.length() ).replace(' ','_');
+        return name;
+    }
+
     public void startDownload(){
 
         Runnable r = new Runnable() {
@@ -183,7 +194,7 @@ class Downloader {
             public void run() {
                 Scanner in = new Scanner(System.in);
                 long fileSize = conn.getContentLengthLong();
-                String oldFileName = urlStr.substring( urlStr.lastIndexOf('/')+1, urlStr.length() );
+                String oldFileName = getFileName(urlStr);
                 String newFileName = null;
 
                 // conn.setRequestMethod("GET");
@@ -202,16 +213,16 @@ class Downloader {
                             System.out.print("Enter file name : ");
                             newFileName=in.next();
                         }else{
-                            System.err.println("aborted...\n");
+                            System.err.println("aborted");
                             System.exit(4);
                         }
                     }
                 }
 
-                if(newFileName==null)
-                    newFileName=oldFileName;
+                if(newFileName == null)
+                    newFileName = oldFileName;
 
-                System.out.println("\ndownloading: "+newFileName +" Size: "+getSize(fileSize));
+                System.out.println("downloading: "+newFileName +" ("+getSize(fileSize)+")");
 
                 // int requestInfo = conn.getResponseCode();
 
@@ -221,7 +232,7 @@ class Downloader {
                     // writing the data to the file
                     FileOutputStream fileOutput = new FileOutputStream(newFileName);
 
-                    file=new File(newFileName);
+                    file = new File(newFileName);
                     int len = 0;
                     byte[] buff = new byte[1024];
                     len = buffInput.read(buff);
@@ -235,7 +246,7 @@ class Downloader {
                         fileOutput.write(buff,0,len);
                         len = buffInput.read(buff);
                         end=System.currentTimeMillis();
-                        if(end-start>=100){
+                        if(end-start >= 100){
                             start=end;
                             System.out.print( "\r"+getSize(file.length())+"/"+getSize(fileSize)+"  ["+percent(file.length(),fileSize)+"%]" );
                         }
@@ -246,10 +257,10 @@ class Downloader {
                     fileOutput.close();
                     buffInput.close();
 
-                    System.out.println("download complete...\n");
+                    System.out.println("download complete...");
 
                 } catch (IOException e) {
-                    System.err.println("error occured\n");
+                    System.err.println("error occured");
                 }
 
             }
@@ -265,7 +276,7 @@ class Downloader {
             @Override
             public void run(){
                 long fileSize = conn.getContentLengthLong();
-                String fileName = urlStr.substring( urlStr.lastIndexOf('/')+1, urlStr.length() );
+                String fileName = getFileName(urlStr);
 
                 File file = new File(fileName);
 
@@ -282,7 +293,7 @@ class Downloader {
                         RandomAccessFile fileOutput = new RandomAccessFile(file,"rw");
                         fileOutput.seek(bytesToSkip);
                         bytesToDownload = fileSize - bytesToSkip;
-                        System.out.println("\ndownloading: "+getSize(bytesToDownload)+" of "+getSize(fileSize));
+                        System.out.println("downloading: "+getSize(bytesToDownload)+" of "+getSize(fileSize));
 
                         len = buffInput.read(buff);
                         downloaded += len;
@@ -297,7 +308,7 @@ class Downloader {
                             len = buffInput.read(buff);
                             downloaded += len;
                             end=System.currentTimeMillis();
-                            if(end-start>=100){
+                            if(end-start >= 100){
                                 start=end;
                                 System.out.print( "\r"+getSize(downloaded)+"/"+getSize(bytesToDownload)+"  ["+percent(downloaded,bytesToDownload)+"%]" );
                             }
@@ -308,11 +319,11 @@ class Downloader {
                         fileOutput.close();
                         buffInput.close();
 
-                        System.out.println("download complete...\n");
+                        System.out.println("download complete...");
                     }else{
                         FileOutputStream fileOutput = new FileOutputStream(fileName);
                         bytesToDownload = fileSize;
-                        System.out.println("file not found\ndownloading entire file\n");
+                        System.out.println("file not found\ndownloading entire file");
                         System.out.println("downloading: "+getSize(bytesToDownload)+" of "+getSize(fileSize));
 
                         len = buffInput.read(buff);
@@ -328,7 +339,7 @@ class Downloader {
                             len = buffInput.read(buff);
                             downloaded += len;
                             end=System.currentTimeMillis();
-                            if(end-start>=100){
+                            if(end-start >= 100){
                                 start=end;
                                 System.out.print( "\r"+getSize(downloaded)+"/"+getSize(bytesToDownload)+"\t["+percent(downloaded,bytesToDownload)+"%]" );
                             }
@@ -340,40 +351,12 @@ class Downloader {
                         fileOutput.close();
                         buffInput.close();
 
-                        System.out.println("download complete...\n");
+                        System.out.println("download complete...");
                     }
-
-                    
-                    // len = buffInput.read(buff);
-                    // downloaded += len;
-                    // long start,end;
-
-                    // start = System.currentTimeMillis();
-                    // System.out.println();
-                    // System.out.print( getSize(downloaded)+"/"+getSize(bytesToDownload)+" ["+percent(downloaded,bytesToDownload)+"%]" );
-
-                    // while (len != -1){
-                    //     fileOutput.write(buff,0,len);
-                    //     len = buffInput.read(buff);
-                    //     downloaded += len;
-                    //     end=System.currentTimeMillis();
-                    //     if(end-start>=100){
-                    //         start=end;
-                    //         System.out.print( "\r"+getSize(downloaded)+"/"+getSize(bytesToDownload)+"\t["+percent(downloaded,bytesToDownload)+"%]" );
-                    //     }
-                    // }
-                    // System.out.print( "\r"+getSize(downloaded)+"/"+getSize(bytesToDownload)+"\t["+percent(downloaded,bytesToDownload)+"%]\n" );
-
-                    // fileOutput.flush();
-                    // fileOutput.close();
-                    // buffInput.close();
-
-                    // System.out.println("download complete...\n");
-
                 } catch(FileNotFoundException e){
-                    System.out.println("file not found\n");
+                    System.out.println("file not found");
                 } catch (IOException e){
-                    System.err.println("error occured\n");
+                    System.err.println("error occured");
                 }
             }
         };
